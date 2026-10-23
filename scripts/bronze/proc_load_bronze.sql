@@ -7,28 +7,24 @@ Script Purpose:
     For each table it:
       - Truncates the table.
       - Loads the CSV file with COPY.
-    It reports how long each table and the whole load took.
-
-Parameters:
-    base_path - folder that contains 'source_crm' and 'source_erp'.
+    It reports the rows loaded and how long each table and the
+    whole load took.
 
 Notes:
     - COPY reads files on the PostgreSQL server's machine, so the
       server must be able to read the folder. On macOS, the
       Downloads folder is often blocked; copy the datasets to
-      /Users/Shared if you get "Permission denied".
+      /Users/Shared and update the paths if you get
+      "Permission denied".
     - COPY from a file requires superuser or the
       pg_read_server_files role.
 
 Usage:
     CALL bronze.load_bronze();
-    CALL bronze.load_bronze('/Users/Shared/01_datasets');
 =============================================================
 */
 
-CREATE OR REPLACE PROCEDURE bronze.load_bronze(
-    base_path TEXT DEFAULT '/Users/calculator/Downloads/sql-data-warehouse-project/01_datasets'
-)
+CREATE OR REPLACE PROCEDURE bronze.load_bronze()
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -37,56 +33,121 @@ DECLARE
     batch_start_time  TIMESTAMP;
     batch_end_time    TIMESTAMP;
     row_count         BIGINT;
-    src               RECORD;
 BEGIN
     batch_start_time := clock_timestamp();
     RAISE NOTICE '================================================';
     RAISE NOTICE 'Loading Bronze Layer';
     RAISE NOTICE '================================================';
 
-    FOR src IN
-        SELECT * FROM (VALUES
-            (1, 'CRM', 'bronze.crm_cust_info',     'source_crm/cust_info.csv'),
-            (2, 'CRM', 'bronze.crm_prd_info',      'source_crm/prd_info.csv'),
-            (3, 'CRM', 'bronze.crm_sales_details', 'source_crm/sales_details.csv'),
-            (4, 'ERP', 'bronze.erp_cust_az12',     'source_erp/CUST_AZ12.csv'),
-            (5, 'ERP', 'bronze.erp_loc_a101',      'source_erp/LOC_A101.csv'),
-            (6, 'ERP', 'bronze.erp_px_cat_g1v2',   'source_erp/PX_CAT_G1V2.csv')
-        ) AS t(seq, source_system, table_name, file_name)
-        ORDER BY seq
-    LOOP
-        start_time := clock_timestamp();
-        RAISE NOTICE '------------------------------------------------';
-        RAISE NOTICE '>> % | Truncating table: %', src.source_system, src.table_name;
-        EXECUTE format('TRUNCATE TABLE %s', src.table_name);
+    -- =========================================================
+    -- CRM
+    -- =========================================================
+    RAISE NOTICE '------------------------------------------------';
+    RAISE NOTICE 'Loading CRM Tables';
+    RAISE NOTICE '------------------------------------------------';
 
-        RAISE NOTICE '>> % | Loading data into: %', src.source_system, src.table_name;
-        EXECUTE format(
-            'COPY %s FROM %L WITH (FORMAT csv, HEADER true, DELIMITER %L)',
-            src.table_name,
-            base_path || '/' || src.file_name,
-            ','
-        );
-        GET DIAGNOSTICS row_count = ROW_COUNT;
+    -- crm_cust_info
+    start_time := clock_timestamp();
+    RAISE NOTICE '>> Truncating Table: bronze.crm_cust_info';
+    TRUNCATE TABLE bronze.crm_cust_info;
+    RAISE NOTICE '>> Inserting Data Into: bronze.crm_cust_info';
+    COPY bronze.crm_cust_info
+    FROM '/Users/calculator/Downloads/sql-data-warehouse-project/01_datasets/source_crm/cust_info.csv'
+    WITH (FORMAT csv, HEADER true, DELIMITER ',');
+    GET DIAGNOSTICS row_count = ROW_COUNT;
+    end_time := clock_timestamp();
+    RAISE NOTICE '>> Rows Loaded: %', row_count;
+    RAISE NOTICE '>> Load Duration: % seconds', ROUND(EXTRACT(EPOCH FROM end_time - start_time)::NUMERIC, 3);
+    RAISE NOTICE '>> -------------';
 
-        end_time := clock_timestamp();
-        RAISE NOTICE '>> Rows loaded: %', row_count;
-        RAISE NOTICE '>> Load duration: % seconds',
-            ROUND(EXTRACT(EPOCH FROM end_time - start_time)::NUMERIC, 3);
-    END LOOP;
+    -- crm_prd_info
+    start_time := clock_timestamp();
+    RAISE NOTICE '>> Truncating Table: bronze.crm_prd_info';
+    TRUNCATE TABLE bronze.crm_prd_info;
+    RAISE NOTICE '>> Inserting Data Into: bronze.crm_prd_info';
+    COPY bronze.crm_prd_info
+    FROM '/Users/calculator/Downloads/sql-data-warehouse-project/01_datasets/source_crm/prd_info.csv'
+    WITH (FORMAT csv, HEADER true, DELIMITER ',');
+    GET DIAGNOSTICS row_count = ROW_COUNT;
+    end_time := clock_timestamp();
+    RAISE NOTICE '>> Rows Loaded: %', row_count;
+    RAISE NOTICE '>> Load Duration: % seconds', ROUND(EXTRACT(EPOCH FROM end_time - start_time)::NUMERIC, 3);
+    RAISE NOTICE '>> -------------';
+
+    -- crm_sales_details
+    start_time := clock_timestamp();
+    RAISE NOTICE '>> Truncating Table: bronze.crm_sales_details';
+    TRUNCATE TABLE bronze.crm_sales_details;
+    RAISE NOTICE '>> Inserting Data Into: bronze.crm_sales_details';
+    COPY bronze.crm_sales_details
+    FROM '/Users/calculator/Downloads/sql-data-warehouse-project/01_datasets/source_crm/sales_details.csv'
+    WITH (FORMAT csv, HEADER true, DELIMITER ',');
+    GET DIAGNOSTICS row_count = ROW_COUNT;
+    end_time := clock_timestamp();
+    RAISE NOTICE '>> Rows Loaded: %', row_count;
+    RAISE NOTICE '>> Load Duration: % seconds', ROUND(EXTRACT(EPOCH FROM end_time - start_time)::NUMERIC, 3);
+    RAISE NOTICE '>> -------------';
+
+    -- =========================================================
+    -- ERP
+    -- =========================================================
+    RAISE NOTICE '------------------------------------------------';
+    RAISE NOTICE 'Loading ERP Tables';
+    RAISE NOTICE '------------------------------------------------';
+
+    -- erp_cust_az12
+    start_time := clock_timestamp();
+    RAISE NOTICE '>> Truncating Table: bronze.erp_cust_az12';
+    TRUNCATE TABLE bronze.erp_cust_az12;
+    RAISE NOTICE '>> Inserting Data Into: bronze.erp_cust_az12';
+    COPY bronze.erp_cust_az12
+    FROM '/Users/calculator/Downloads/sql-data-warehouse-project/01_datasets/source_erp/CUST_AZ12.csv'
+    WITH (FORMAT csv, HEADER true, DELIMITER ',');
+    GET DIAGNOSTICS row_count = ROW_COUNT;
+    end_time := clock_timestamp();
+    RAISE NOTICE '>> Rows Loaded: %', row_count;
+    RAISE NOTICE '>> Load Duration: % seconds', ROUND(EXTRACT(EPOCH FROM end_time - start_time)::NUMERIC, 3);
+    RAISE NOTICE '>> -------------';
+
+    -- erp_loc_a101
+    start_time := clock_timestamp();
+    RAISE NOTICE '>> Truncating Table: bronze.erp_loc_a101';
+    TRUNCATE TABLE bronze.erp_loc_a101;
+    RAISE NOTICE '>> Inserting Data Into: bronze.erp_loc_a101';
+    COPY bronze.erp_loc_a101
+    FROM '/Users/calculator/Downloads/sql-data-warehouse-project/01_datasets/source_erp/LOC_A101.csv'
+    WITH (FORMAT csv, HEADER true, DELIMITER ',');
+    GET DIAGNOSTICS row_count = ROW_COUNT;
+    end_time := clock_timestamp();
+    RAISE NOTICE '>> Rows Loaded: %', row_count;
+    RAISE NOTICE '>> Load Duration: % seconds', ROUND(EXTRACT(EPOCH FROM end_time - start_time)::NUMERIC, 3);
+    RAISE NOTICE '>> -------------';
+
+    -- erp_px_cat_g1v2
+    start_time := clock_timestamp();
+    RAISE NOTICE '>> Truncating Table: bronze.erp_px_cat_g1v2';
+    TRUNCATE TABLE bronze.erp_px_cat_g1v2;
+    RAISE NOTICE '>> Inserting Data Into: bronze.erp_px_cat_g1v2';
+    COPY bronze.erp_px_cat_g1v2
+    FROM '/Users/calculator/Downloads/sql-data-warehouse-project/01_datasets/source_erp/PX_CAT_G1V2.csv'
+    WITH (FORMAT csv, HEADER true, DELIMITER ',');
+    GET DIAGNOSTICS row_count = ROW_COUNT;
+    end_time := clock_timestamp();
+    RAISE NOTICE '>> Rows Loaded: %', row_count;
+    RAISE NOTICE '>> Load Duration: % seconds', ROUND(EXTRACT(EPOCH FROM end_time - start_time)::NUMERIC, 3);
+    RAISE NOTICE '>> -------------';
 
     batch_end_time := clock_timestamp();
     RAISE NOTICE '================================================';
-    RAISE NOTICE 'Loading Bronze Layer is completed';
-    RAISE NOTICE '   - Total load duration: % seconds',
-        ROUND(EXTRACT(EPOCH FROM batch_end_time - batch_start_time)::NUMERIC, 3);
+    RAISE NOTICE 'Loading Bronze Layer is Completed';
+    RAISE NOTICE '   - Total Load Duration: % seconds', ROUND(EXTRACT(EPOCH FROM batch_end_time - batch_start_time)::NUMERIC, 3);
     RAISE NOTICE '================================================';
 EXCEPTION
     WHEN OTHERS THEN
         RAISE NOTICE '================================================';
         RAISE NOTICE 'ERROR OCCURRED DURING LOADING BRONZE LAYER';
-        RAISE NOTICE 'Error message: %', SQLERRM;
-        RAISE NOTICE 'Error code: %', SQLSTATE;
+        RAISE NOTICE 'Error Message: %', SQLERRM;
+        RAISE NOTICE 'Error Code: %', SQLSTATE;
         RAISE NOTICE '================================================';
         RAISE;
 END;
