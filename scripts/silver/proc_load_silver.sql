@@ -148,18 +148,16 @@ BEGIN
         CASE WHEN sls_due_dt = 0 OR LENGTH(sls_due_dt::TEXT) <> 8 THEN NULL
              ELSE CAST(CAST(sls_due_dt AS VARCHAR) AS DATE)
         END AS sls_due_dt,
-        -- Sales negative, zero or missing: calculate it as quantity * price
+        -- Recalculate sales if the original value is missing or incorrect
         CASE WHEN sls_sales IS NULL OR sls_sales <= 0
+                  OR sls_sales <> sls_quantity * ABS(sls_price)
              THEN sls_quantity * ABS(sls_price)
              ELSE sls_sales
         END AS sls_sales,
         sls_quantity,
-        -- Price zero or missing: calculate it as sales / quantity
-        -- Price negative: make it positive
-        CASE WHEN sls_price IS NULL OR sls_price = 0
+        -- Derive price if the original value is invalid
+        CASE WHEN sls_price IS NULL OR sls_price <= 0
              THEN sls_sales / NULLIF(sls_quantity, 0)
-             WHEN sls_price < 0
-             THEN ABS(sls_price)
              ELSE sls_price
         END AS sls_price
     FROM bronze.crm_sales_details;
